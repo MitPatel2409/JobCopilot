@@ -68,6 +68,24 @@ It is a **single-user app with no sign-in**: it runs on your computer, for you.
 
 ## Quick start
 
+From the `Job-Copilot` folder:
+
+```bash
+npm start
+```
+
+The first time, this creates `server/.env` and asks you to paste your [Gemini API key](#get-a-gemini-api-key) into it. Run `npm start` again and it:
+
+- checks you have Node 22.13+,
+- installs the server and client dependencies (first run only),
+- starts the server (:5000) and the client (:5173) together, with their output labelled `[server]` and `[client]`,
+- opens **http://localhost:5173** in your browser.
+
+**Ctrl+C** stops both. If either one crashes, the other is stopped too, so nothing is left running in the background. No account, no login.
+
+<details>
+<summary>Running the server and client separately</summary>
+
 ```bash
 # 1. Server
 cd server
@@ -81,9 +99,8 @@ npm install
 npm run dev                   # http://localhost:5173
 ```
 
-Open **http://localhost:5173**. That's it: no account, no login.
-
 Windows (PowerShell): use `copy .env.example .env` instead of `cp`.
+</details>
 
 ---
 
@@ -473,6 +490,6 @@ docs/images/               screenshots for this README
 ### Tests
 
 ```bash
-cd server && npm test        # node:test, in-memory SQLite, fake LLM and fake Google; no keys needed
-cd client && npm run lint && npm run build
+npm test                     # server tests (node:test, fake LLM and fake Google; no keys) + client lint
+cd client && npm run build
 ```

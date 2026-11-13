@@ -1,0 +1,12 @@
+{
+  "name": "job-copilot",
+  "private": true,
+  "description": "Runs the Job-Copilot server and client together.",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "test": "npm --prefix server test && npm --prefix client run lint"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}
