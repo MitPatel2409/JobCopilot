@@ -1,0 +1,30 @@
+{
+  "name": "job-copilot-server",
+  "version": "1.0.0",
+  "description": "Plain-English job-search assistant API (Express + Gemini function calling + SQLite)",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning index.js",
+    "dev": "nodemon --exec \"node --disable-warning=ExperimentalWarning\" index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^2.32.0",
+    "@googleapis/calendar": "^20.1.0",
+    "@googleapis/gmail": "^22.1.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "mammoth": "^1.13.0",
+    "multer": "^2.5.0",
+    "pdf-parse": "^2.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

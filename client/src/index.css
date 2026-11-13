@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+/* Dark mode follows the `dark` class on <html> (see hooks/useTheme.js). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The whole palette: neutral ink on white. Colour is kept for status only. */
+:root {
+  color-scheme: light;
+  --canvas: #fafafa;
+  --surface: #ffffff;
+  --sunken: #f4f4f5;
+  --line: #e4e4e7;
+  --line-strong: #d4d4d8;
+  --ink: #18181b;
+  --ink-soft: #3f3f46;
+  --muted: #71717a;
+  --faint: #a1a1aa;
+  --accent: #18181b;
+  --accent-hover: #3f3f46;
+  --accent-fg: #ffffff;
+  --danger: #b42318;
+  --danger-soft: #fef3f2;
+  --danger-line: #fecdca;
+  --warn: #b54708;
+  --good: #067647;
+  --chart: #3f3f46;
+}
+
+.dark {
+  color-scheme: dark;
+  --canvas: #0f0f10;
+  --surface: #18181b;
+  --sunken: #202023;
+  --line: #2a2a2e;
+  --line-strong: #3f3f46;
+  --ink: #f4f4f5;
+  --ink-soft: #d4d4d8;
+  --muted: #a1a1aa;
+  --faint: #71717a;
+  --accent: #f4f4f5;
+  --accent-hover: #d4d4d8;
+  --accent-fg: #18181b;
+  --danger: #f97066;
+  --danger-soft: #2a1513;
+  --danger-line: #55201c;
+  --warn: #fdb022;
+  --good: #47cd89;
+  --chart: #d4d4d8;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-line: var(--danger-line);
+  --color-warn: var(--warn);
+  --color-good: var(--good);
+  --color-chart: var(--chart);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* In the base layer, so utilities such as outline-none still win. */
+@layer base {
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
