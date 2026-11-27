@@ -17,6 +17,7 @@ const { createStatsRepo } = require("./repos/stats");
 const { createDocumentsRepo } = require("./repos/documents");
 const { createPrepGuidesRepo } = require("./repos/prepGuides");
 const { createMailMatchesRepo } = require("./repos/mailMatches");
+const { createResumeFolderFilesRepo } = require("./repos/resumeFolderFiles");
 
 function createStore(db, userId) {
   if (!userId) throw new Error("createStore needs a user id.");
@@ -35,6 +36,7 @@ function createStore(db, userId) {
     documents: createDocumentsRepo(db, userId),
     prepGuides: createPrepGuidesRepo(db, userId),
     mailMatches: createMailMatchesRepo(db, userId),
+    resumeFiles: createResumeFolderFilesRepo(db, userId),
   };
 }
 

@@ -27,6 +27,15 @@ function createGoogleCalendar(oauth, { calendarId, timeZone }) {
       await api.events.patch({ calendarId, eventId, requestBody: toBody(event) });
     },
 
+    /**
+     * The calendar's own timezone (Google shows events in it). Readable with
+     * the events permission alone: listing events reports it.
+     */
+    async timeZone() {
+      const response = await api.events.list({ calendarId, maxResults: 1, singleEvents: true, timeMin: new Date().toISOString() });
+      return response.data.timeZone ?? null;
+    },
+
     async deleteEvent(eventId) {
       try {
         await api.events.delete({ calendarId, eventId });

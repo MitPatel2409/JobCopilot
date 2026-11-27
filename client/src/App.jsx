@@ -19,7 +19,7 @@ import CommandMenu from "./components/CommandMenu";
 import ShortcutsDialog from "./components/ShortcutsDialog";
 import Toasts from "./components/Toasts";
 import { Button } from "./components/ui";
-import { getJson } from "./api/client";
+import { getJson, sendJson } from "./api/client";
 import { useChat } from "./hooks/useChat";
 import { useFetch } from "./hooks/useFetch";
 import { useServerEvents } from "./hooks/useServerEvents";
@@ -86,6 +86,9 @@ function Workspace({ theme, returned }) {
   // Dates in forms and on screen use the timezone the server uses (Settings).
   if (profile.data) setAppTimeZone(profile.data.settings.timezone || profile.data.defaults.timezone);
 
+  // Reminders due plus résumés waiting in the inbox: what the Today badge counts.
+  const attentionCount = (today.data?.due.length ?? 0) + (today.data?.resumeFiles?.length ?? 0);
+
   const view = VIEWS.find((item) => item.id === storedView) ?? VIEWS[0];
   const Active = COMPONENTS[view.id];
   const action = ACTIONS[view.id];
@@ -119,6 +122,22 @@ function Workspace({ theme, returned }) {
       const body = `${event.count} new ${event.count === 1 ? "email" : "emails"} from recruiters. See Today.`;
       showNotification("Job-Copilot", body);
       push({ kind: "reminder", title: "Recruiter replied", body });
+      refresh();
+    } else if (event.type === "resume_inbox") {
+      const body = `${event.count} new ${event.count === 1 ? "résumé" : "résumés"} in your folder. See Today.`;
+      showNotification("Job-Copilot", body);
+      push({ kind: "reminder", title: "New résumé found", body, action: { label: "Open Today", onClick: () => setView("today") } });
+      refresh();
+    } else if (event.type === "resume_attached") {
+      push({
+        kind: "success",
+        title: "Résumé attached",
+        body: `${event.filename} → ${event.label}`,
+        action: {
+          label: "Undo",
+          onClick: () => sendJson(`/resume-inbox/${event.file_id}/undo`, "POST").then(refresh).catch((error) => onError(error.message)),
+        },
+      });
       refresh();
     } else if (event.type === "data_changed") {
       refresh();
@@ -181,7 +200,7 @@ function Workspace({ theme, returned }) {
       <Sidebar
         view={view.id}
         onNavigate={setView}
-        dueCount={today.data?.due.length ?? 0}
+        dueCount={attentionCount}
         theme={theme}
         name={profile.data?.settings.name || profile.data?.defaults.name || ""}
         onShowShortcuts={() => setDialog("shortcuts")}
@@ -215,7 +234,7 @@ function Workspace({ theme, returned }) {
             />
           </div>
         </main>
-        <MobileNav view={view.id} onNavigate={setView} dueCount={today.data?.due.length ?? 0} />
+        <MobileNav view={view.id} onNavigate={setView} dueCount={attentionCount} />
       </div>
 
       {chatOpen && <ChatPanel chat={chat} onClose={() => setChatOpen(false)} />}

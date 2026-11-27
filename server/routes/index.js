@@ -10,7 +10,9 @@ const outreach = require("../controllers/outreachController");
 const stats = require("../controllers/statsController");
 const profile = require("../controllers/profileController");
 const connectors = require("../controllers/connectorsController");
+const googleSetup = require("../controllers/googleSetupController");
 const mail = require("../controllers/mailController");
+const resumeInbox = require("../controllers/resumeInboxController");
 const events = require("../controllers/eventsController");
 const { uploadOne } = require("../middleware/upload");
 
@@ -72,12 +74,23 @@ router.post("/profile/resume", uploadOne, profile.uploadResume);
 router.get("/profile/resume", profile.downloadResume);
 router.delete("/profile/resume", profile.deleteResume);
 
+router.get("/google/setup", googleSetup.get);
+router.put("/google/setup", googleSetup.save);
+router.delete("/google/setup", googleSetup.remove);
+
 router.get("/connectors", connectors.list);
 router.delete("/connectors/:name", connectors.disconnect);
 
 router.get("/mail-matches", mail.list);
 router.post("/mail-matches/:id/apply", mail.apply);
 router.post("/mail-matches/:id/dismiss", mail.dismiss);
+
+router.get("/resume-inbox", resumeInbox.list);
+router.post("/resume-inbox/scan", resumeInbox.scan);
+router.post("/resume-inbox/ignore-all", resumeInbox.ignoreAll);
+router.post("/resume-inbox/:id/attach", resumeInbox.attach);
+router.post("/resume-inbox/:id/ignore", resumeInbox.ignore);
+router.post("/resume-inbox/:id/undo", resumeInbox.undo);
 
 router.get("/events", events.stream);
 

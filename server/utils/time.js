@@ -118,7 +118,13 @@ function formatLocal(instant, timeZone) {
   }).format(new Date(instant));
 }
 
+/** True when two timezones show the same wall-clock time at `date` ("America/Toronto" and "America/New_York" do). */
+function sameOffset(date, zoneA, zoneB) {
+  return offsetMs(date, zoneA) === offsetMs(date, zoneB);
+}
+
 module.exports = {
+  sameOffset,
   localDate,
   localHour,
   describeNow,

@@ -1,3 +1,5 @@
+const fs = require("node:fs");
+const path = require("node:path");
 const args = require("../utils/args");
 const { NotFoundError, ValidationError } = require("../utils/errors");
 const { saveResume } = require("../services/documentService");
@@ -31,6 +33,10 @@ exports.update = (req, res) => {
     fields.follow_up_days = body.follow_up_days === null || body.follow_up_days === "" ? null : wholeNumber(body.follow_up_days, "follow_up_days", 1, 60);
   }
   if ("digest_enabled" in body) fields.digest_enabled = body.digest_enabled ? 1 : 0;
+  if ("resume_folder" in body) {
+    fields.resume_folder = body.resume_folder === null || body.resume_folder === "" ? null : checkFolder(args.text(body, "resume_folder", { max: 500 }));
+  }
+  if ("resume_auto_attach" in body) fields.resume_auto_attach = body.resume_auto_attach ? 1 : 0;
 
   const user = ctx.app.users.update(req.user.id, fields);
   res.json(profile(ctx.app.forUser(user), user));
@@ -64,6 +70,8 @@ function profile(ctx, user) {
       nudge_hour: user.nudge_hour,
       follow_up_days: user.follow_up_days,
       digest_enabled: user.digest_enabled !== 0,
+      resume_folder: user.resume_folder,
+      resume_auto_attach: user.resume_auto_attach === 1,
     },
     defaults: {
       name: config.userName,
@@ -73,6 +81,7 @@ function profile(ctx, user) {
       digest_hour: config.digestHour,
       nudge_hour: config.nudgeHour,
       follow_up_days: config.followUpDays,
+      resume_folder: config.resumeFolder,
     },
     resume: ctx.store.documents.info(null),
   };
@@ -85,6 +94,17 @@ function checkTimezone(value) {
   } catch {
     throw new ValidationError(`"${value}" is not a timezone (e.g. America/Toronto).`);
   }
+}
+
+/** The folder as a full path; it has to exist now, so a typo is caught on save. */
+function checkFolder(value) {
+  const folder = path.resolve(value);
+  try {
+    if (fs.statSync(folder).isDirectory()) return folder;
+  } catch {
+    // falls through to the message
+  }
+  throw new ValidationError(`"${value}" is not a folder on this computer.`);
 }
 
 function wholeNumber(value, field, min, max) {

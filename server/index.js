@@ -54,6 +54,13 @@ async function start() {
   createScheduler(app).start();
 }
 
+// Started by scripts/start.js: its end of the stdin pipe closes when it stops, however it stopped.
+if (config.exitWithParent) {
+  process.stdin.on("end", () => process.exit(0));
+  process.stdin.on("close", () => process.exit(0));
+  process.stdin.resume();
+}
+
 start().catch((error) => {
   console.error(`Could not start the server: ${error.message}`);
   process.exit(1);

@@ -75,7 +75,6 @@ export default function ChatPanel({ chat, onClose }) {
               if (event.key === "Enter" && !event.shiftKey) submit(event);
             }}
             rows={2}
-            maxLength={4000}
             placeholder="Tell me what you did, or ask what's due"
             aria-label="Message"
             className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-1 text-sm text-ink outline-none placeholder:text-faint"

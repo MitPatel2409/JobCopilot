@@ -14,39 +14,42 @@ const { CONNECTORS, createOAuthClient } = require("../auth/googleOAuth");
 const { createGoogleCalendar } = require("../calendar/googleCalendar");
 const { createGmailClient } = require("../gmail/gmailClient");
 
-function createGoogleConnectors({ config, googleTokens, vault }) {
+/** `getGoogle()` gives the current OAuth client settings (from .env or Settings). */
+function createGoogleConnectors({ getGoogle, googleTokens, vault }) {
   // Clients are reused while the stored token is unchanged, so Google is not
   // asked for a new access token on every request.
   const cache = new Map();
 
   function forUser(user, ctx) {
-    if (!config.google.clientId) return {};
+    const google = getGoogle();
+    if (!google.clientId || !google.clientSecret) return {};
     const token = googleTokens.get(user.id);
     if (!token || token.last_error) return {};
 
-    const key = `${token.updated_at}|${ctx.config.timezone}`;
+    const key = `${google.clientId}|${token.updated_at}|${ctx.config.timezone}`;
     const cached = cache.get(user.id);
     if (cached?.key === key) return cached.clients;
 
-    const clients = build(user, token, ctx.config.timezone);
+    const clients = build(user, token, ctx.config.timezone, google);
     cache.set(user.id, { key, clients });
     return clients;
   }
 
-  function build(user, token, timeZone) {
-    const oauth = createOAuthClient(config.google);
+  function build(user, token, timeZone, google) {
+    const oauth = createOAuthClient(google);
     oauth.setCredentials({ refresh_token: vault.decrypt(token.refresh_token) });
     const on = (name) => token.enabled.includes(name) && token.scopes.includes(CONNECTORS[name].scope);
     const guard = (fn) => watchForRevokedToken(fn, () => googleTokens.markBroken(user.id, "Google no longer accepts this connection."));
 
     const gmail = on("gmail_send") || on("gmail_drafts") || on("gmail_read") ? createGmailClient(oauth) : null;
-    const calendar = on("calendar") ? createGoogleCalendar(oauth, { calendarId: config.google.calendarId, timeZone }) : null;
+    const calendar = on("calendar") ? createGoogleCalendar(oauth, { calendarId: google.calendarId, timeZone }) : null;
 
     return {
       calendar: calendar && {
         createEvent: guard(calendar.createEvent),
         updateEvent: guard(calendar.updateEvent),
         deleteEvent: guard(calendar.deleteEvent),
+        timeZone: guard(calendar.timeZone),
       },
       mailer: on("gmail_send") ? { send: guard((mail) => gmail.sendMessage({ ...mail, to: user.email })) } : null,
       gmail:

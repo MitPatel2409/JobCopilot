@@ -1,6 +1,7 @@
 const { dueBefore } = require("../services/dueRange");
 const { addDays, localHour, startOfWeek } = require("../utils/time");
 const { STALE_DAYS } = require("../services/scheduler/digest");
+const { inbox } = require("../services/resumeFolderService");
 
 /** Everything the "Today" tab shows, in one request. */
 exports.today = (req, res) => {
@@ -23,6 +24,7 @@ exports.today = (req, res) => {
     journal,
     appliedThisWeek: ctx.store.stats.appliedSince(startOfWeek(today)).length,
     replies: ctx.store.mailMatches.listNew(),
+    resumeFiles: inbox(ctx),
     // Still "applied" after three weeks, with no reminder waiting: worth a follow-up or "no reply".
     quiet: ctx.store.applications
       .staleSince(addDays(today, -STALE_DAYS))

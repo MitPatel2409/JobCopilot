@@ -56,6 +56,10 @@ module.exports = {
   digestHour: readHour("DIGEST_HOUR", 9),
   nudgeHour: readHour("NUDGE_HOUR", 20),
 
+  // Folder where the tailored résumés are saved; new files in it are offered
+  // for the matching application. Can be changed in Settings.
+  resumeFolder: process.env.RESUME_FOLDER || "",
+
   dbPath: process.env.DB_PATH || path.join(__dirname, "..", "data", "copilot.db"),
 
   // Google connectors (Calendar, Gmail), linked from Settings. Needs an OAuth
@@ -82,6 +86,10 @@ module.exports = {
       ...(process.env.ALLOWED_HOSTS || "").split(","),
     ].map((name) => (name || "").trim().toLowerCase()).filter(Boolean)),
   ],
+
+  // Set by `npm start` (scripts/start.js): stop when the launcher is gone, so
+  // closing its window never leaves the server running in the background.
+  exitWithParent: process.env.EXIT_WITH_PARENT === "1",
 
   // Link put in calendar events and the digest email.
   appUrl: process.env.APP_URL || "http://localhost:5173",

@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS users (
   nudge_hour      INTEGER,
   follow_up_days  INTEGER,
   digest_enabled  INTEGER NOT NULL DEFAULT 1,
+  google_client_id      TEXT,              -- an OAuth client pasted into Settings (when not set in .env)
+  google_client_secret  TEXT,              -- encrypted (services/auth/tokenVault.js)
+  resume_folder         TEXT,              -- folder watched for new tailored résumés (services/resumeFolderService.js)
+  resume_auto_attach    INTEGER NOT NULL DEFAULT 0,  -- 1 = attach a file on its own when one application clearly matches
   created_at      TEXT NOT NULL
 );
 
@@ -169,6 +173,27 @@ CREATE TABLE IF NOT EXISTS documents (
   created_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS documents_owner ON documents (user_id, application_id);
+
+-- Résumé files the folder watcher has seen (services/resumeFolderService.js).
+-- A changed file is a new row (new hash); the same file seen again is skipped.
+-- `text` is kept so matches can be re-scored when applications are added later.
+CREATE TABLE IF NOT EXISTS resume_folder_files (
+  id              INTEGER PRIMARY KEY,
+  user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  path            TEXT NOT NULL,
+  filename        TEXT NOT NULL,
+  size            INTEGER NOT NULL,
+  mtime_ms        INTEGER NOT NULL,
+  sha256          TEXT NOT NULL,
+  text            TEXT NOT NULL DEFAULT '',
+  status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'attached', 'ignored')),
+  application_id  INTEGER REFERENCES applications(id) ON DELETE SET NULL,
+  auto_attached   INTEGER NOT NULL DEFAULT 0,
+  no_auto         INTEGER NOT NULL DEFAULT 0,   -- 1 = never attach this one on its own (undone or failed)
+  seen_at         TEXT NOT NULL,
+  UNIQUE (user_id, path, sha256)
+);
+CREATE INDEX IF NOT EXISTS resume_folder_files_user ON resume_folder_files (user_id, status);
 
 -- The interview prep guide for an application, as JSON (services/prepGuideService.js).
 CREATE TABLE IF NOT EXISTS prep_guides (

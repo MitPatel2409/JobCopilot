@@ -9,9 +9,11 @@ import { Field, Input, Textarea } from "./ui";
 /**
  * Adds an application without the assistant. The follow-up reminder is
  * scheduled as usual. The résumé can be uploaded, or reused from another application.
+ * `inboxFile` (a file the résumé folder watcher found) is attached as the résumé instead,
+ * and `initial` prefills fields.
  */
-export default function NewApplicationDialog({ onClose, onCreated }) {
-  const [form, setForm] = useState({ company: "", role: "", url: "", applied_on: localDatePlus(0), notes: "" });
+export default function NewApplicationDialog({ onClose, onCreated, initial = {}, inboxFile = null }) {
+  const [form, setForm] = useState({ company: "", role: "", url: "", applied_on: localDatePlus(0), notes: "", ...initial });
   const [resumeFrom, setResumeFrom] = useState(""); // "" none, null base résumé, or an application id
   const [file, setFile] = useState(null);
   const [resumeError, setResumeError] = useState(null);
@@ -25,7 +27,8 @@ export default function NewApplicationDialog({ onClose, onCreated }) {
     if (!result) return;
     try {
       const id = result.application.id;
-      if (file) await uploadFile(`/applications/${id}/resume`, file);
+      if (inboxFile) await sendJson(`/resume-inbox/${inboxFile.id}/attach`, "POST", { application_id: id });
+      else if (file) await uploadFile(`/applications/${id}/resume`, file);
       else if (resumeFrom !== "") await sendJson(`/applications/${id}/resume/copy`, "POST", { from_application_id: resumeFrom });
     } catch (attachError) {
       setResumeError(`The application was added, but the résumé was not: ${attachError.message}`);
@@ -58,6 +61,11 @@ export default function NewApplicationDialog({ onClose, onCreated }) {
           <Input type="date" value={form.applied_on} max={localDatePlus(0)} onChange={set("applied_on")} required />
         </Field>
       </div>
+      {inboxFile ? (
+        <p className="text-sm text-ink-soft">
+          Résumé sent: <span className="font-medium text-ink">{inboxFile.filename}</span> (from your résumé folder)
+        </p>
+      ) : (
       <div className="text-sm">
         <span className="mb-1 flex items-baseline justify-between font-medium text-ink-soft">
           Résumé sent <span className="text-xs font-normal text-muted">Optional</span>
@@ -91,6 +99,7 @@ export default function NewApplicationDialog({ onClose, onCreated }) {
           }}
         />
       </div>
+      )}
       <Field label="Notes" hint="Optional">
         <Textarea value={form.notes} onChange={set("notes")} rows={3} />
       </Field>

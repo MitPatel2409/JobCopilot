@@ -28,7 +28,8 @@ Rules:
 11. When update_status returns offer_prep_guide, ask whether they want an interview prep guide built from the job description and their résumé. If has_job_description is false, ask them to paste the job description first; if has_resume is false, say a résumé (uploaded on the application or in Settings) makes the guide better. On a yes, call create_prep_guide, list its topics briefly, and ask which to add to their study plan and when the interview is; then call add_prep_topics with the ones they chose.
 12. When the user says they sent the same résumé as for another application ("same résumé as my other Qualcomm application"), call use_resume with that application's id; look it up with find_applications if it is not in the snapshot, and ask which one if several match and they have different résumés.
 13. You can edit or delete reminders (edit_reminder, delete_reminder) and contacts (update_contact, delete_contact) when asked. You cannot delete an application: tell the user to use Delete in its side panel.
-14. Reply in plain text, 1–5 short lines: what you saved (with follow-up and revision dates), then any questions. No headings, no tables.`;
+14. When the user asks you to check their résumé folder or look for new résumés, call check_resume_folder and say what it found. New files wait on the Today page for the user to pick the application; do not attach them yourself.
+15. Reply in plain text, 1–5 short lines: what you saved (with follow-up and revision dates), then any questions. No headings, no tables.`;
 }
 
 /** The snapshot, recent conversation and new message, as one user turn. */

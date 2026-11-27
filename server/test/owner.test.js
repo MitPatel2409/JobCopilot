@@ -130,7 +130,7 @@ test("disconnecting the last service revokes Google's access", async (t) => {
 test("the owner's Google clients follow the services turned on", () => {
   const ctx = createTestContext({ config: { google: { clientId: "id", clientSecret: "secret", redirectUri: "http://x", calendarId: "primary" } } });
   const vault = createTokenVault("test-secret");
-  const connectors = createGoogleConnectors({ config: ctx.app.config, googleTokens: ctx.app.googleTokens, vault });
+  const connectors = createGoogleConnectors({ getGoogle: () => ctx.app.config.google, googleTokens: ctx.app.googleTokens, vault });
   const save = (enabled, scopes) => ctx.app.googleTokens.save(ctx.user.id, { refreshToken: vault.encrypt("r"), scopes, enabled });
 
   assert.deepEqual(connectors.forUser(ctx.user, ctx), {}, "nothing connected");
@@ -160,4 +160,74 @@ test("the token vault round-trips and rejects tampering", () => {
   tampered[tampered.length - 1] ^= 1;
   assert.throws(() => vault.decrypt(tampered.toString("base64")));
   assert.throws(() => createTokenVault("other").decrypt(sealed));
+});
+
+test("a Google client pasted into Settings works at once, stored encrypted; .env wins when set", async (t) => {
+  const ctx = createTestContext();
+  const request = await startServer(t, ctx);
+
+  let setup = await request("/google/setup");
+  assert.equal(setup.json.configured, false);
+  assert.equal(setup.json.redirectUri, "http://localhost:5000/auth/google/callback");
+  assert.equal((await request("/auth/google/connect?services=calendar")).headers.get("location"), "http://localhost:5173/?connect_error=not_configured");
+
+  const bad = await request("/google/setup", { method: "PUT", body: { client_id: "not-a-client", client_secret: "GOCSPX-abcdefghij" } });
+  assert.equal(bad.status, 400);
+
+  setup = await request("/google/setup", { method: "PUT", body: { client_id: "123-abc.apps.googleusercontent.com", client_secret: "GOCSPX-secret-value" } });
+  assert.equal(setup.json.configured, true);
+  assert.equal(setup.json.source, "app");
+  const stored = ctx.app.users.get(ctx.user.id).google_client_secret;
+  assert.notEqual(stored, "GOCSPX-secret-value", "stored encrypted");
+  assert.equal(ctx.app.google().clientSecret, "GOCSPX-secret-value");
+
+  const go = await request("/auth/google/connect?services=calendar,gmail_send");
+  const url = new URL(go.headers.get("location"));
+  assert.equal(url.hostname, "accounts.google.com");
+  assert.equal(url.searchParams.get("client_id"), "123-abc.apps.googleusercontent.com");
+  assert.match(url.searchParams.get("scope"), /calendar\.events.*gmail\.send/);
+
+  assert.equal((await request("/google/setup", { method: "DELETE" })).status, 204);
+  assert.equal((await request("/google/setup")).json.configured, false);
+
+  const fromEnv = createTestContext({ config: { google: { clientId: "env.apps.googleusercontent.com", clientSecret: "x", redirectUri: "http://localhost:5000/auth/google/callback", calendarId: "primary" } } });
+  const envRequest = await startServer(t, fromEnv);
+  assert.equal((await envRequest("/google/setup")).json.source, "env");
+  assert.equal((await envRequest("/google/setup", { method: "PUT", body: { client_id: "a.apps.googleusercontent.com", client_secret: "GOCSPX-1234567890" } })).status, 400);
+});
+
+test("one consent screen connects several services; ones Google wasn't granted are left off", async (t) => {
+  const ctx = createTestContext();
+  ctx.app.users.update(ctx.user.id, { email: "" });
+  useFakeGoogle(ctx, {
+    some: { email: "mit@gmail.com", refreshToken: "r-1", scopes: ["openid", CONNECTORS.calendar.scope, CONNECTORS.gmail_drafts.scope] },
+  });
+  const request = await startServer(t, ctx);
+
+  const go = await request("/auth/google/connect?services=calendar,gmail_drafts,gmail_read");
+  const state = new URL(go.headers.get("location")).searchParams.get("state");
+  const cookie = `jc_oauth=${encodeURIComponent(cookieFrom(go.headers, "jc_oauth"))}`;
+  const back = await request(`/auth/google/callback?code=some&state=${state}`, { headers: { Cookie: cookie } });
+  assert.equal(back.headers.get("location"), "http://localhost:5173/?connected=calendar%2Cgmail_drafts");
+  assert.deepEqual(ctx.app.googleTokens.get(ctx.user.id).enabled, ["calendar", "gmail_drafts"]);
+
+  assert.equal((await request("/auth/google/connect?services=calendar,nope")).headers.get("location"), "http://localhost:5173/?connect_error=unknown");
+});
+
+test("Settings warns when Google Calendar shows another timezone than the app", async (t) => {
+  const zoneOf = (timeZone) => ({ createEvent: async () => "e", updateEvent: async () => {}, deleteEvent: async () => {}, timeZone: async () => timeZone });
+
+  const utc = createTestContext({ calendar: zoneOf("UTC") });
+  const request = await startServer(t, utc);
+  assert.deepEqual((await request("/connectors")).json.calendarTimeZone, { calendar: "UTC", app: "America/Toronto" });
+
+  const sameClock = createTestContext({ calendar: zoneOf("America/New_York") });
+  const request2 = await startServer(t, sameClock);
+  assert.equal((await request2("/connectors")).json.calendarTimeZone, null, "a zone with the same clock time is fine");
+
+  const failing = createTestContext({ calendar: { ...zoneOf(""), timeZone: async () => { throw new Error("quota"); } } });
+  const request3 = await startServer(t, failing);
+  const listed = await request3("/connectors");
+  assert.equal(listed.status, 200);
+  assert.equal(listed.json.calendarTimeZone, null);
 });

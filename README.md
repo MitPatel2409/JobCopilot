@@ -28,6 +28,7 @@ A personal job-search assistant that runs on your own computer. Tell it what you
    - [The application panel](#the-application-panel)
    - [Job description and résumé](#job-description-and-résumé)
    - [Interview prep guide](#interview-prep-guide)
+   - [Résumé folder](#résumé-folder)
    - [Recruiters and messages](#recruiters-and-messages)
    - [Study plan](#study-plan)
    - [Journal](#journal)
@@ -81,7 +82,15 @@ The first time, this creates `server/.env` and asks you to paste your [Gemini AP
 - starts the server (:5000) and the client (:5173) together, with their output labelled `[server]` and `[client]`,
 - opens **http://localhost:5173** in your browser.
 
-**Ctrl+C** stops both. If either one crashes, the other is stopped too, so nothing is left running in the background. No account, no login.
+**Ctrl+C** (or closing the window) stops both. If either one crashes, the other is stopped too, so nothing is left running in the background. If Job-Copilot is already running, `npm start` just opens it in the browser instead of starting a second copy. No account, no login.
+
+### Desktop shortcut (Windows)
+
+```bash
+npm run shortcut
+```
+
+This puts a **Job-Copilot** icon on your desktop and in the Start menu. To keep it on the taskbar, right-click either one and choose **Pin to taskbar** (on the desktop icon, it's under **Show more options**). Windows doesn't let a script pin it for you. Double-click it to start the app (it runs `Start Job-Copilot.cmd`, which is the same as `npm start`); close its window to stop it. Double-clicking while it's already running just opens the browser. You can also double-click `Start Job-Copilot.cmd` in the project folder directly.
 
 <details>
 <summary>Running the server and client separately</summary>
@@ -155,7 +164,11 @@ Job-Copilot works fully without Google. Connecting Google adds:
 | **Save drafts to Gmail** | Puts outreach messages into your Gmail **Drafts** folder, addressed and ready. You press Send yourself. | Manage drafts |
 | **Notice recruiter replies** | Every 15 minutes, looks for mail from recruiters you saved and suggests a status on Today. Only the sender, subject and preview are kept. | Read email |
 
-You turn each one on separately. To make this work, you create your own (free) Google OAuth client once:
+**No setup at all:** each reminder's **⋯** menu has **Add to Google Calendar**, which opens Google Calendar's own "new event" page already filled in, and messages have **Open in Gmail**. Those need nothing below.
+
+**For automatic sync**, Google needs you to register a small app of your own, once (about five minutes, free; nobody else sees it). The easiest way is from the app: **Settings → Google Calendar and Gmail** walks you through it with a direct link for each step and a Copy button for the redirect URI. You paste the Client ID and secret there (they're stored encrypted), with no `.env` editing and no restart. Then tick the services you want and click **Connect Google** once. Google asks for all of them on one screen.
+
+The same steps in detail, if you prefer to follow them here or put the client in `.env`:
 
 #### Step 1: Create a Google Cloud project
 
@@ -167,6 +180,10 @@ You turn each one on separately. To make this work, you create your own (free) G
 1. Go to **APIs & Services → Library**.
 2. Search for **Google Calendar API** → **Enable**.
 3. Search for **Gmail API** → **Enable**.
+
+Pick the plain APIs: Google tags them **"Google Enterprise API"**, which is only a category; they are free. Skip the entries with **MCP** in the name (for example **Gmail MCP API**, `gmailmcp.googleapis.com`): those let AI tools such as Claude Desktop reach Gmail, and Job-Copilot doesn't use them. To be sure, open them directly: [Gmail API](https://console.cloud.google.com/apis/enableflow?apiid=gmail.googleapis.com) (`gmail.googleapis.com`) and [Google Calendar API](https://console.cloud.google.com/apis/enableflow?apiid=calendar-json.googleapis.com) (`calendar-json.googleapis.com`).
+
+Both are free: there is no charge and no billing account is needed, only daily usage limits far above what one person uses.
 
 #### Step 3: Set up the consent screen
 
@@ -192,7 +209,11 @@ You don't need to add scopes here; the app asks for each one when you click Conn
 
 4. Click **Create**. Copy the **Client ID** and **Client secret**.
 
-#### Step 5: Put them in `server/.env`
+#### Step 5: Paste them into Settings (or `server/.env`)
+
+Paste the Client ID and secret into **Settings → Google Calendar and Gmail → Save**. That's all: no restart.
+
+Or put them in `server/.env` instead (these take priority over Settings):
 
 ```env
 GOOGLE_CLIENT_ID=1234567890-abc123.apps.googleusercontent.com
@@ -201,16 +222,16 @@ GOOGLE_REDIRECT_URI=http://localhost:5000/auth/google/callback
 GOOGLE_CALENDAR_ID=primary
 ```
 
-Restart the server. It prints `Google connectors: available`.
+and restart Job-Copilot.
 
 #### Step 6: Connect in the app
 
-1. Open **Settings** (press `6`) → **Google connections**.
-2. Click **Connect** next to a service. Google opens and asks for that one permission.
+1. Open **Settings** (press `6`) → **Google Calendar and Gmail**.
+2. Tick the services you want and click **Connect Google**. Google opens and asks for all of them on one screen.
 3. You will see **"Google hasn't verified this app"**: that's expected for your own app in testing. Click **Continue** (sometimes under **Advanced → Go to Job-Copilot**).
-4. Allow the permission. You land back in Settings with the service marked **Connected**.
+4. Allow the permissions. You land back in Settings with the services marked **Connected**. If you untick one on Google's screen, it simply stays off.
 
-Repeat for each service you want. **Disconnect** stops using a service; disconnecting the last one withdraws the app's access to your Google account.
+To add another service later, tick it and connect again. **Disconnect** stops using a service; disconnecting the last one withdraws the app's access to your Google account. **Use a different one** (under the list) forgets a client pasted into Settings.
 
 > **Note:** While your consent screen is in **Testing**, Google expires these connections after **7 days**. When that happens, Settings shows a warning and you click **Connect** again. To avoid it, publish the app (Audience → Publish app). The "Read email" permission then needs Google's review, so many people simply reconnect weekly.
 
@@ -232,6 +253,7 @@ Repeat for each service you want. **Disconnect** stops using a service; disconne
 | `REMINDER_HOUR` | `9` | Hour (0–23) when follow-ups, revisions and interview reminders come due. |
 | `DIGEST_HOUR` | `9` | Hour the Gmail digest is sent. |
 | `NUDGE_HOUR` | `20` | Hour of the evening "nothing logged today?" check-in. |
+| `RESUME_FOLDER` | none | Folder where you save tailored résumés; can also be set in Settings. See [Résumé folder](#résumé-folder). |
 | `DB_PATH` | `server/data/copilot.db` | Where the database file lives. |
 | `GOOGLE_CLIENT_ID` | | From [Step 4](#step-4-create-the-oauth-client). Leave empty to skip Google. |
 | `GOOGLE_CLIENT_SECRET` | | From Step 4. |
@@ -254,6 +276,7 @@ The sidebar on the left switches views; the **Assistant** panel on the right can
 Your daily start page:
 
 - **Due now / Next 7 days / Applied this week** at a glance.
+- **New résumés in your folder**: tailored résumés found in your [résumé folder](#résumé-folder) that are waiting for you to pick the application.
 - **Recruiter replies**: mail from saved recruiters (when Gmail reading is connected), with a suggested status. Click **Mark as Interview** (or pick another) or **Dismiss**. Nothing changes until you click.
 - **No news for 3 weeks**: applications still on Applied after 21 days with nothing scheduled. **Follow up tomorrow** adds a reminder; **Mark no reply** closes it.
 - **Due now** and **Next 7 days**: every reminder, with **Done**, **Snooze** (tomorrow / 3 days / next week), and **⋯** to edit or delete.
@@ -305,6 +328,17 @@ When an application moves to **Interview** (from the board, the panel, a recruit
 
 Tick topics, optionally set the interview date, and click **Add to study plan**. Each topic gets a "what to cover" plan in [Study](#study-plan) and a reminder to study it, spread over the days before the interview. If you change the JD or résumé later, the guide says so; **Make a new guide** keeps what you already added.
 
+### Résumé folder
+
+If you keep every tailored résumé in one folder, set it in **Settings → Résumé folder** and Job-Copilot will notice new files for you, so you never have to remember to upload them.
+
+- Every minute (or when you click **Check now**, or ask the assistant "check my résumé folder") it looks at the PDF and Word files in the folder and one level of sub-folders, so one sub-folder per company works (`Shopify/Resume.pdf`). A file is picked up once it has stopped changing for a few seconds. Cover letters and transcripts are skipped.
+- The first time a folder is set, the files already in it are noted but **not** offered, so an old folder does not fill your Today page. Only files saved after that are.
+- New files appear on **Today** under *New résumés in your folder*, each with its best guesses. The match comes from the company and role words in the **file name and its sub-folder name** and how close the file's date is to the application date (no AI involved). Click **Attach to …**, or **Replace résumé for …** when that application already has one, pick **Another application…**, start a **New application** from the file, or **Ignore** it.
+- **Attach automatically when sure** (off by default): when the file name names exactly one application that has no résumé yet, the file is attached on its own and a notice offers **Undo**. Anything less certain waits for your click.
+- A file that you already uploaded by hand is recognised and not offered again; a renamed file is not offered again; a file saved with new content is offered as a replacement.
+- Your folder is only read. Job-Copilot never moves, renames, edits or deletes anything in it.
+
 ### Recruiters and messages
 
 ![Contacts and messages](docs/images/application-contacts-messages.png)
@@ -343,7 +377,8 @@ Applications per week, response rate, median time to a reply, your logging strea
 
 - **Profile**: your name, a sentence about you (used in drafts), timezone, and the hours for reminders, the digest and the evening check-in. Empty fields use the defaults from `.env`.
 - **Base résumé**: used by prep guides when an application has no résumé of its own.
-- **Google connections**: connect or disconnect each service (see [setup](#connect-your-google-account-optional)).
+- **Résumé folder**: the folder where you save your tailored résumés (see [below](#résumé-folder)).
+- **Google Calendar and Gmail**: a guided setup the first time, then tick services and connect them at once, or disconnect each one (see [setup](#connect-your-google-account-optional)).
 
 ### The assistant (chat)
 

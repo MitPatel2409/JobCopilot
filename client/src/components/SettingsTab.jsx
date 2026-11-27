@@ -1,17 +1,11 @@
 import { useState } from "react";
-import { AlertTriangle, CalendarDays, Inbox, Mail, MailSearch } from "lucide-react";
-import { apiUrl, sendJson } from "../api/client";
+import { sendJson } from "../api/client";
 import { useAction } from "../hooks/useAction";
+import { formatDateTime } from "../utils/format";
 import { useFetch } from "../hooks/useFetch";
 import { ResumeFile } from "./application/ResumeSection";
+import GoogleSection from "./GoogleSection";
 import { Button, Card, Field, Input, LoadState, SectionTitle, Select, Textarea } from "./ui";
-
-const CONNECTOR_INFO = {
-  calendar: { icon: CalendarDays, text: "Every reminder becomes a 30-minute event with the job link and recruiter details." },
-  gmail_send: { icon: Mail, text: "A morning email to you with what's due. Sent from your own Gmail, only to you." },
-  gmail_drafts: { icon: Inbox, text: "Put outreach drafts in your Gmail Drafts folder, addressed and ready. You press Send." },
-  gmail_read: { icon: MailSearch, text: "Every 15 minutes, look for mail from recruiters you saved and suggest a status. Only the sender, subject and preview are kept." },
-};
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
@@ -21,7 +15,6 @@ function hourLabel(hour) {
 
 export default function SettingsTab({ refreshKey, onError, onChanged, onNotice }) {
   const profile = useFetch("/profile", refreshKey);
-  const connectors = useFetch("/connectors", refreshKey);
 
   if (!profile.data) return <LoadState loading={profile.loading} error={profile.error} />;
 
@@ -35,9 +28,84 @@ export default function SettingsTab({ refreshKey, onError, onChanged, onNotice }
         <ResumeFile resume={profile.data.resume} path="/profile/resume" empty="No base résumé yet." onChanged={onChanged} onError={onError} />
       </section>
 
-      <ConnectorsSection data={connectors.data} loading={connectors.loading} error={connectors.error} onError={onError} onChanged={onChanged} />
+      <ResumeFolderSection
+        key={JSON.stringify([profile.data.settings.resume_folder, profile.data.settings.resume_auto_attach])}
+        data={profile.data}
+        refreshKey={refreshKey}
+        onError={onError}
+        onChanged={onChanged}
+        onNotice={onNotice}
+      />
+
+      <GoogleSection refreshKey={refreshKey} onError={onError} onChanged={onChanged} />
 
     </div>
+  );
+}
+
+/** The folder where the tailored résumés are saved; new files in it are offered on the Today page. */
+function ResumeFolderSection({ data, refreshKey, onError, onChanged, onNotice }) {
+  const { settings, defaults } = data;
+  const status = useFetch("/resume-inbox", refreshKey);
+  const [folder, setFolder] = useState(settings.resume_folder ?? "");
+  const [auto, setAuto] = useState(settings.resume_auto_attach);
+  const { busy, run } = useAction(onError);
+  const dirty = folder.trim() !== (settings.resume_folder ?? "") || auto !== settings.resume_auto_attach;
+  const last = status.data?.last_scan;
+
+  async function save(event) {
+    event.preventDefault();
+    const body = { resume_folder: folder.trim() || null, resume_auto_attach: auto };
+    if (await run(() => sendJson("/profile", "PATCH", body))) {
+      onNotice("Résumé folder saved");
+      onChanged();
+    }
+  }
+
+  async function checkNow() {
+    const result = await run(() => sendJson("/resume-inbox/scan", "POST"));
+    if (!result) return;
+    onChanged();
+    if (result.result.error) onError(result.result.error);
+    else onNotice("Folder checked", result.files.length === 0 ? "Nothing new is waiting." : `${result.files.length} waiting on the Today page.`);
+  }
+
+  return (
+    <section>
+      <SectionTitle>Résumé folder</SectionTitle>
+      <form onSubmit={save}>
+        <Card className="space-y-3 p-4">
+          <p className="text-sm text-muted">
+            Where you save your tailored résumés (PDF or Word). New files are noticed within a minute and offered for the application they match. One sub-folder per company works. Files already there are not offered. Your files are only read, never changed.
+          </p>
+          <Field label="Folder" hint="The full path, e.g. C:\Users\you\Documents\Resumes">
+            <Input value={folder} onChange={(event) => setFolder(event.target.value)} placeholder={defaults.resume_folder || "Not set"} maxLength={500} />
+          </Field>
+          <label className="flex items-start gap-2 text-sm text-ink-soft">
+            <input type="checkbox" checked={auto} onChange={(event) => setAuto(event.target.checked)} className="mt-0.5 size-4 accent-current" />
+            <span>
+              Attach automatically when sure
+              <span className="block text-xs text-muted">
+                Only when the file name clearly names one application that has no résumé yet. You get an Undo. Otherwise the file waits for your click.
+              </span>
+            </span>
+          </label>
+          {last && (
+            <p className={`text-xs ${last.error ? "text-danger" : "text-muted"}`}>
+              {last.error ?? `Last checked ${formatDateTime(last.at)} · ${last.found} ${last.found === 1 ? "file" : "files"} in the folder`}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="primary" size="md" disabled={busy || !dirty}>
+              Save folder
+            </Button>
+            <Button type="button" size="md" disabled={busy || dirty || !(settings.resume_folder || defaults.resume_folder)} onClick={checkNow}>
+              Check now
+            </Button>
+          </div>
+        </Card>
+      </form>
+    </section>
   );
 }
 
@@ -131,67 +199,6 @@ function ProfileSection({ data, onError, onChanged, onNotice }) {
           </Button>
         </Card>
       </form>
-    </section>
-  );
-}
-
-function ConnectorsSection({ data, loading, error, onError, onChanged }) {
-  const { busy, run } = useAction(onError);
-  if (!data) return <LoadState loading={loading} error={error} />;
-
-  async function disconnect(id) {
-    if ((await run(() => sendJson(`/connectors/${id}`, "DELETE"))) !== null) onChanged();
-  }
-
-  return (
-    <section>
-      <SectionTitle>Google connections</SectionTitle>
-      {!data.available && (
-        <Card className="mb-3 p-3.5 text-sm text-ink-soft">
-          Google isn&apos;t set up on this server yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to server/.env (see the README) and
-          restart the server.
-        </Card>
-      )}
-      {data.account && <p className="mb-2 text-sm text-muted">Connected as {data.account}. Connecting with another Google account replaces it.</p>}
-      {data.error && (
-        <Card className="mb-3 flex items-start gap-2 border-danger-line bg-danger-soft p-3.5 text-sm text-danger">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-          Google stopped accepting this app&apos;s access (it was removed, or it expired after 7 days while the app is in testing). Connect again below.
-        </Card>
-      )}
-      <ul className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface">
-        {data.connectors.map((connector) => {
-          const { icon: Icon, text } = CONNECTOR_INFO[connector.id];
-          return (
-            <li key={connector.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <Icon className="size-5 shrink-0 text-faint" aria-hidden />
-              <div className="min-w-48 flex-1">
-                <p className="text-sm font-medium text-ink">
-                  {connector.label}
-                  {connector.connected && <span className="ml-2 text-xs font-normal text-good">Connected</span>}
-                </p>
-                <p className="text-sm text-muted">{text}</p>
-              </div>
-              {connector.connected ? (
-                <Button disabled={busy} onClick={() => disconnect(connector.id)}>
-                  Disconnect
-                </Button>
-              ) : (
-                <a
-                  href={data.available ? apiUrl(`/auth/google/connect/${connector.id}`) : undefined}
-                  aria-disabled={!data.available}
-                  className={`inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-fg hover:bg-accent-hover ${
-                    data.available ? "" : "pointer-events-none opacity-40"
-                  }`}
-                >
-                  Connect
-                </a>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <p className="mt-2 text-xs text-muted">Connecting opens Google to ask for that one permission. The app never sends mail to anyone but you.</p>
     </section>
   );
 }

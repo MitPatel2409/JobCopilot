@@ -83,4 +83,4 @@ function cleanFilename(name, type) {
   return base.toLowerCase().endsWith(`.${type}`) ? base : `${base}.${type}`;
 }
 
-module.exports = { MAX_BYTES, saveResume, copyResume, resumeTextFor };
+module.exports = { MAX_BYTES, MAX_TEXT, detectType, extractText, cleanFilename, saveResume, copyResume, resumeTextFor };

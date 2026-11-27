@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, BookOpen, Briefcase, Check, Clock, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { Bell, BookOpen, Briefcase, CalendarPlus, Check, Clock, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { sendJson } from "../api/client";
 import { formatDateTime, isOverdue, localDatePlus, localParts } from "../utils/format";
 import FormDialog from "./FormDialog";
@@ -12,6 +12,23 @@ const SNOOZE_OPTIONS = [
   { label: "In 3 days", days: 3 },
   { label: "Next week", days: 7 },
 ];
+
+/**
+ * Google Calendar's own "new event" page, filled in with this reminder:
+ * adding it to the calendar needs no Google setup at all.
+ */
+function addToGoogleCalendarUrl(reminder) {
+  const stamp = (date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const start = new Date(reminder.due_at);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: reminder.message,
+    dates: `${stamp(start)}/${stamp(end)}`,
+    details: [reminder.url && `Job posting: ${reminder.url}`, "From Job-Copilot"].filter(Boolean).join("\n"),
+  });
+  return `https://calendar.google.com/calendar/render?${params}`;
+}
 
 /** One reminder with Done, Snooze, Edit and Delete. `onChanged` reloads the list after an action. */
 export default function ReminderRow({ reminder, onChanged, onError }) {
@@ -83,6 +100,10 @@ export default function ReminderRow({ reminder, onChanged, onError }) {
         label="Reminder actions"
         items={[
           ...(reminder.status === "pending" ? [{ label: "Edit", icon: Pencil, onSelect: () => setDialog("edit") }] : []),
+          // Not needed when Calendar is connected: the reminder is already an event there.
+          ...(reminder.status === "pending" && !reminder.calendar_event_id
+            ? [{ label: "Add to Google Calendar", icon: CalendarPlus, onSelect: () => window.open(addToGoogleCalendarUrl(reminder), "_blank", "noopener") }]
+            : []),
           { label: "Delete", icon: Trash2, danger: true, onSelect: () => setDialog("delete") },
         ]}
       />

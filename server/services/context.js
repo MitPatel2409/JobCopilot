@@ -5,6 +5,7 @@
  *   db, llm, clock, events     shared by everyone
  *   config                     server settings (config/env.js shape)
  *   users, googleTokens        the owner's settings and Google connection
+ *   google()                   the Google OAuth client settings: .env first, else pasted in Settings
  *   oauth, vault, connectors   Google consent, token encryption, and the owner's Google clients
  *   forUser(user)              everything requests, tools and loops need (always the owner)
  *
@@ -40,9 +41,21 @@ function createContext({ db, llm, config, clock = () => new Date(), connectors }
     events,
     users: createUsersRepo(db),
     googleTokens: createGoogleTokensRepo(db),
-    oauth: createGoogleOAuth(config.google),
     vault: config.appSecret ? createTokenVault(config.appSecret) : null,
     connectors: null,
+
+    /**
+     * The Google OAuth client to use: GOOGLE_CLIENT_ID/SECRET from .env when
+     * set (source "env"), else the one pasted into Settings (source "app").
+     */
+    google() {
+      if (config.google.clientId && config.google.clientSecret) return { ...config.google, source: "env" };
+      const owner = app.users.owner();
+      if (owner.google_client_id && owner.google_client_secret && app.vault) {
+        return { ...config.google, clientId: owner.google_client_id, clientSecret: app.vault.decrypt(owner.google_client_secret), source: "app" };
+      }
+      return { ...config.google, clientId: "", clientSecret: "", source: null };
+    },
 
     forUser(user) {
       const userConfig = settingsFor(config, user);
@@ -64,11 +77,12 @@ function createContext({ db, llm, config, clock = () => new Date(), connectors }
       return ctx;
     },
   };
+  app.oauth = createGoogleOAuth(() => app.google());
   app.connectors =
     connectors !== undefined
       ? connectors
-      : app.oauth.configured && app.vault
-        ? createGoogleConnectors({ config, googleTokens: app.googleTokens, vault: app.vault })
+      : app.vault
+        ? createGoogleConnectors({ getGoogle: () => app.google(), googleTokens: app.googleTokens, vault: app.vault })
         : null;
   return app;
 }
@@ -87,6 +101,8 @@ function settingsFor(config, user) {
     nudgeHour: own(user.nudge_hour, config.nudgeHour),
     followUpDays: own(user.follow_up_days, config.followUpDays),
     digestEnabled: user.digest_enabled !== 0,
+    resumeFolder: own(user.resume_folder, config.resumeFolder) || "",
+    resumeAutoAttach: user.resume_auto_attach === 1,
   };
 }
 

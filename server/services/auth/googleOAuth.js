@@ -1,7 +1,11 @@
 /**
  * Google OAuth for the connectors (Calendar, Gmail): the consent link for
- * one service, and reading what Google sends back. There is no sign-in;
- * the identity scopes only tell Settings which account is connected.
+ * the services the owner picked, and reading what Google sends back. There
+ * is no sign-in; the identity scopes only tell Settings which account is
+ * connected.
+ *
+ * The OAuth client (ID and secret) comes from `getGoogle()` on every call,
+ * so one pasted into Settings works at once, without a restart.
  */
 const { auth } = require("@googleapis/calendar");
 
@@ -19,19 +23,23 @@ function createOAuthClient({ clientId, clientSecret, redirectUri }) {
   return new auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
-function createGoogleOAuth(google) {
-  const configured = Boolean(google.clientId && google.clientSecret);
+function createGoogleOAuth(getGoogle) {
+  const client = () => createOAuthClient(getGoogle());
 
   return {
-    configured,
+    get configured() {
+      const google = getGoogle();
+      return Boolean(google.clientId && google.clientSecret);
+    },
 
     /**
-     * Asks for one connector's permission on top of what was granted before.
-     * `prompt: consent` makes Google return a refresh token every time.
+     * Asks, on one consent screen, for the permissions of `connectors` on top
+     * of what was granted before. `prompt: consent` makes Google return a
+     * refresh token every time.
      */
-    connectUrl(state, connector) {
-      return createOAuthClient(google).generateAuthUrl({
-        scope: [...IDENTITY_SCOPES, CONNECTORS[connector].scope],
+    connectUrl(state, connectors) {
+      return client().generateAuthUrl({
+        scope: [...IDENTITY_SCOPES, ...connectors.map((connector) => CONNECTORS[connector].scope)],
         state,
         access_type: "offline",
         include_granted_scopes: true,
@@ -41,9 +49,9 @@ function createGoogleOAuth(google) {
 
     /** Trades the code from the redirect for tokens and the verified account they belong to. */
     async exchange(code) {
-      const client = createOAuthClient(google);
-      const { tokens } = await client.getToken(code);
-      const ticket = await client.verifyIdToken({ idToken: tokens.id_token, audience: google.clientId });
+      const oauth = client();
+      const { tokens } = await oauth.getToken(code);
+      const ticket = await oauth.verifyIdToken({ idToken: tokens.id_token, audience: getGoogle().clientId });
       const profile = ticket.getPayload();
       if (!profile.email_verified) throw new Error("This Google account's email address is not verified.");
       return {
@@ -60,7 +68,7 @@ function createGoogleOAuth(google) {
 
     /** Withdraws everything the app was granted. */
     async revoke(refreshToken) {
-      await createOAuthClient(google).revokeToken(refreshToken);
+      await client().revokeToken(refreshToken);
     },
   };
 }

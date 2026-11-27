@@ -5,10 +5,11 @@ import { useFetch } from "../hooks/useFetch";
 import { daysSince, describeApplication, formatDateTime, formatShortDate, isOverdue, localDatePlus } from "../utils/format";
 import { STATUSES, statusInfo } from "../utils/status";
 import ReminderRow from "./ReminderRow";
+import ResumeInbox from "./ResumeInbox";
 import Stat from "./Stat";
 import { Button, Card, Empty, List, LoadState, SectionTitle, Select } from "./ui";
 
-export default function TodayTab({ refreshKey, onError, onChanged, onOpen, onInterview }) {
+export default function TodayTab({ refreshKey, onError, onNotice, onChanged, onOpen, onInterview }) {
   const { data, loading, error } = useFetch("/today", refreshKey);
   if (!data) return <LoadState loading={loading} error={error} />;
 
@@ -37,6 +38,8 @@ export default function TodayTab({ refreshKey, onError, onChanged, onOpen, onInt
           </List>
         </section>
       )}
+
+      {data.resumeFiles.length > 0 && <ResumeInbox files={data.resumeFiles} onChanged={onChanged} onError={onError} onNotice={onNotice} />}
 
       {data.quiet.length > 0 && (
         <section>

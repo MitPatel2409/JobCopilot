@@ -2,7 +2,6 @@ const { runChat } = require("../services/agent/runChat");
 const { explainLlmError } = require("../services/llm/llmErrors");
 const { openNdjsonStream } = require("../utils/ndjsonStream");
 
-const MAX_MESSAGE_LENGTH = 4000;
 const HISTORY_LIMIT = 50;
 
 exports.history = (req, res) => {
@@ -14,9 +13,6 @@ exports.chat = async (req, res) => {
   const ctx = req.ctx;
   const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
   if (!message) return res.status(400).json({ error: "Type a message first." });
-  if (message.length > MAX_MESSAGE_LENGTH) {
-    return res.status(400).json({ error: `Messages are limited to ${MAX_MESSAGE_LENGTH} characters.` });
-  }
 
   const stream = openNdjsonStream(res);
   try {

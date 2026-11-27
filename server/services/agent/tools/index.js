@@ -19,6 +19,7 @@ const { createSaveJobDescriptionTool } = require("./saveJobDescription");
 const { createCreatePrepGuideTool } = require("./createPrepGuide");
 const { createAddPrepTopicsTool } = require("./addPrepTopics");
 const { createUseResumeTool } = require("./useResume");
+const { createCheckResumeFolderTool } = require("./checkResumeFolder");
 const { createEditReminderTool, createDeleteReminderTool } = require("./editReminder");
 const { createUpdateContactTool, createDeleteContactTool } = require("./editContact");
 
@@ -41,6 +42,7 @@ function createToolbox(ctx) {
     createCreatePrepGuideTool(ctx),
     createAddPrepTopicsTool(ctx),
     createUseResumeTool(ctx),
+    createCheckResumeFolderTool(ctx),
     createEditReminderTool(ctx),
     createDeleteReminderTool(ctx),
     createUpdateContactTool(ctx),

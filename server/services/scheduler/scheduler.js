@@ -5,6 +5,7 @@
  *   2. Daily digest   → one email at their digest hour with what's due, when Gmail sending is connected.
  *   3. Evening nudge  → at their nudge hour, if nothing was logged today, ask what they did.
  *   4. Recruiter mail → every 15 minutes, when Gmail reading is connected (gmail/replyWatcher.js).
+ *   5. Résumé folder  → every tick, when a folder is set in Settings (resumeFolderService.js).
  *
  * Reminders that came due while the server was off fire on the first tick.
  * The digest and nudge record the day they ran in `meta`, so a restart
@@ -13,6 +14,7 @@
 const { localHour } = require("../../utils/time");
 const { checkReplies } = require("../gmail/replyWatcher");
 const { buildDigest } = require("./digest");
+const { scan: scanResumeFolder } = require("../resumeFolderService");
 
 const TICK_MS = 60 * 1000;
 
@@ -52,6 +54,11 @@ async function tickForOwner(ctx, now) {
     await checkReplies(ctx, now);
   } catch (error) {
     console.error(`Checking Gmail for replies failed: ${error.message}`);
+  }
+  try {
+    await scanResumeFolder(ctx);
+  } catch (error) {
+    console.error(`Checking the résumé folder failed: ${error.message}`);
   }
 }
 

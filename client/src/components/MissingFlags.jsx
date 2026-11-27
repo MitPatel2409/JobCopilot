@@ -1,9 +1,9 @@
-import { FileX, Link2Off, UserX } from "lucide-react";
+import { ClipboardX, Link2Off, UserX } from "lucide-react";
 
 const FLAGS = [
   { field: "url", label: "No posting link", icon: Link2Off },
   { field: "contact", label: "No recruiter saved", icon: UserX },
-  { field: "jd", label: "No job description saved", icon: FileX },
+  { field: "jd", label: "No job description saved", icon: ClipboardX },
 ];
 
 /** Small icons for what an application still lacks: the posting link, a recruiter, the job description. */

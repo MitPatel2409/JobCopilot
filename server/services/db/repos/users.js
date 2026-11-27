@@ -10,6 +10,10 @@ const EDITABLE = [
   "nudge_hour",
   "follow_up_days",
   "digest_enabled",
+  "google_client_id",
+  "google_client_secret",
+  "resume_folder",
+  "resume_auto_attach",
 ];
 
 /**

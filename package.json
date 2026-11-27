@@ -4,7 +4,8 @@
   "description": "Runs the Job-Copilot server and client together.",
   "scripts": {
     "start": "node scripts/start.js",
-    "test": "npm --prefix server test && npm --prefix client run lint"
+    "test": "npm --prefix server test && npm --prefix client run lint",
+    "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1"
   },
   "engines": {
     "node": ">=22.13"

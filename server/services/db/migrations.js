@@ -20,6 +20,10 @@ const ADDED_COLUMNS = [
   ["chat_messages", "user_id", "INTEGER REFERENCES users(id) ON DELETE CASCADE"],
   ["study_topics", "plan", "TEXT NOT NULL DEFAULT ''"],
   ["reminders", "tag", "TEXT"],
+  ["users", "google_client_id", "TEXT"],
+  ["users", "google_client_secret", "TEXT"],
+  ["users", "resume_folder", "TEXT"],
+  ["users", "resume_auto_attach", "INTEGER NOT NULL DEFAULT 0"],
 ];
 
 // Tables whose key now includes the user, so they are rebuilt: [table, columns to copy].
